@@ -1,0 +1,5 @@
+bin
+.vscode
+include_IPP
+intel64_IPP
+build
