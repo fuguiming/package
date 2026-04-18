@@ -31,13 +31,19 @@ struct MatchPair {
 };
 
 // 统计检测板的检测结果
+// image: 图片RGB
 // solderings: 焊点检测结果
 // all_segmentations: 各个焊点附近区域导线分割结果
 // results: 当前板焊点导线组合信息
+// center: PCB板中心点
+// mode: 所处模式
 void matchWiresToSolder(
+    const cv::Mat image,
     const std::vector<CheckBox>& solderings,
     const std::vector<std::vector<CheckBox>>& all_segmentations,
-    std::vector<SolderWire> &results);
+    std::vector<SolderWire> &results,
+    const cv::Point2f center,
+    const bool mode);
 
 // 结合模板结果分析当前检测板的检测结果(可选)
 // img: 图像
@@ -51,15 +57,17 @@ void analyseBasedTruth(
     std::vector<SolderWire>& results);
 
 // 根据模板结果和检测板结果，给出配对情况
+// img: 图像
 // template_img: 模板图像
 // truth: 模板结果，需进行匹配校正
 // results: 检测板结果
 // params: 模板匹配参数
 // iou_thresh: 焊点配对iou阈值
 std::vector<MatchPair> matchSolders(
+    const cv::Mat image,
     const cv::Mat& template_img,
     const std::vector<SolderWire>& truth,
-    const std::vector<SolderWire>& results,
+    std::vector<SolderWire>& results,
     const TemplateMatchResult& params,
     float iou_thresh);
 

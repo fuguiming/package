@@ -358,7 +358,7 @@ void visualizeFinalResult(
             cv::Scalar color = cv::Scalar(0, 255, 0);
             if (match.wire_count_match)
             {
-                label1 = "wire count match success!";
+                label1 = "";
             }
             else{
                 label1 = "wire count match failed!";
@@ -367,7 +367,7 @@ void visualizeFinalResult(
             std::string label2;
             if (match.wire_color_match)
             {
-                label2 = "wire color match success!";
+                label2 = "";
             }
             else{
                 label2 = "wire color match failed!";
@@ -532,7 +532,7 @@ int main(int argc, char** argv)
 
         // 对每个检测框进行分割
         std::vector<std::vector<CheckBox>> all_segmentations;
-        int crop_size = 640;
+        int crop_size = 384;//暂定384 320
         if (!solderings.empty()) {
             segmentor.RunWithBoxes(
                 img,
@@ -550,7 +550,7 @@ int main(int argc, char** argv)
 
         // 联系焊点和导线从属关系
         std::vector<SolderWire> results;
-        matchWiresToSolder(solderings, all_segmentations, results);
+        matchWiresToSolder(img, solderings, all_segmentations, results, cv::Point2f(template_left+template_width*0.5f, template_top+template_height*0.5f), 0);
         // 匹配结果可视化
         visualizeMatchResult(img, results, output_path, "match_calibrate");
 
@@ -653,6 +653,15 @@ int main(int argc, char** argv)
                 continue;
             }
 
+            // 执行模板匹配
+            std::cout<<"start TemplateMatch ..."<<std::endl;
+            std::vector<TemplateMatchResult> MResult;
+            int ret = tempmatcher.TemplateMatch(img, template_img, cv::Rect(0, 0, img.cols, img.rows), 0, 180, MResult);
+            if (0 == ret)
+                std::cout<<"TemplateMatch success ..."<<std::endl;
+            else
+                std::cout<<"TemplateMatch failed ..."<<std::endl;
+
             //检测焊点
             std::vector<CheckBox> solderings;
             detector.Run(
@@ -671,7 +680,7 @@ int main(int argc, char** argv)
 
             // 对每个检测框进行分割
             std::vector<std::vector<CheckBox>> all_segmentations;
-            int crop_size = 640;
+            int crop_size = 384;//暂定384 320
             if (!solderings.empty()) {
                 segmentor.RunWithBoxes(
                     img,
@@ -689,22 +698,13 @@ int main(int argc, char** argv)
 
             // 联系焊点和导线从属关系
             std::vector<SolderWire> results;
-            matchWiresToSolder(solderings, all_segmentations, results);
+            matchWiresToSolder(img, solderings, all_segmentations, results, cv::Point2f(MResult.at(0).maxLoc.x, MResult.at(0).maxLoc.y), 1);
 
             // 匹配结果可视化
             visualizeMatchResult(img, results, output_path, "match_test"+fs::path(path).filename().string());
 
-            // 执行模板匹配
-            std::cout<<"start TemplateMatch ..."<<std::endl;
-            std::vector<TemplateMatchResult> MResult;
-            int ret = tempmatcher.TemplateMatch(img, template_img, cv::Rect(0, 0, img.cols, img.rows), 0, 180, MResult);
-            if (0 == ret)
-                std::cout<<"TemplateMatch success ..."<<std::endl;
-            else
-                std::cout<<"TemplateMatch failed ..."<<std::endl;
-
             // 和参考图片结果做比较
-            std::vector<MatchPair> matchResult = matchSolders(template_img, reference_results, results, MResult.at(0), MATCH_SOLDERS_IOU_THRE);
+            std::vector<MatchPair> matchResult = matchSolders(img, template_img, reference_results, results, MResult.at(0), MATCH_SOLDERS_IOU_THRE);
             
             // 可视化和模板匹配结果
             visualizeFinalResult(img, reference_results, results, matchResult, output_path, fs::path(path).filename().string());

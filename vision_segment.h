@@ -14,6 +14,7 @@
 #include "checkbox.h"
 
 #define MASK_AREA_THRE 100
+#define MASK_SIZE_THRE 60
 class VisionSegment {
 public:
     VisionSegment();

@@ -30,7 +30,8 @@ void save_results_binary(const std::vector<SolderWire>& results, const std::stri
         {
             ofs << w.left << " " << w.top << " " << w.right << " " << w.bottom << " "
                 << w.cls << " " << w.score << " " << w.id << " "
-                << w.mask_width << " " << w.mask_height << "\n";
+                << w.mask_width << " " << w.mask_height << " "
+                << w.color[0] << " " << w.color[1] << " " << w.color[2] << "\n";
 
             ofs << w.mask.size() << "\n";
             for (auto v : w.mask) ofs << v << " ";
@@ -82,7 +83,7 @@ int load_results_binary(const std::string& path, std::vector<SolderWire>& result
 
             ifs >> w.left >> w.top >> w.right >> w.bottom
                 >> w.cls >> w.score >> w.id
-                >> w.mask_width >> w.mask_height;
+                >> w.mask_width >> w.mask_height >> w.color[0] >> w.color[1] >> w.color[2];
 
             size_t w_mask_size;
             ifs >> w_mask_size;

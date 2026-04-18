@@ -12,6 +12,7 @@ struct CheckBox {
     std::vector<float> mask;         // 分割掩码数据
     int mask_width;                  // 掩码宽度
     int mask_height;                 // 掩码高度
+    cv::Scalar color;                // 掩膜颜色
 
     CheckBox() : left(0), top(0), right(0), bottom(0), cls(0), score(0), id(0), 
                  mask_width(0), mask_height(0) {}
