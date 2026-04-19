@@ -316,26 +316,42 @@ void visualizeFinalResult(
 {
     cv::Mat draw_img = image.clone();
 
-    for (size_t det_idx = 0; det_idx < results.size(); ++det_idx)
-    {
-        cv::rectangle(draw_img,
-                        cv::Point(results[det_idx].solder_info.left, results[det_idx].solder_info.top),
-                        cv::Point(results[det_idx].solder_info.right, results[det_idx].solder_info.bottom),
-                        cv::Scalar(0, 0, 255), 2);
-        for (size_t seg_idx = 0; seg_idx < results[det_idx].wires.size(); ++seg_idx)
-        {
-            cv::Scalar color = COLORS[results[det_idx].wires[seg_idx].cls % COLORS.size()];
-            cv::rectangle(draw_img,
-                        cv::Point(results[det_idx].wires[seg_idx].left, results[det_idx].wires[seg_idx].top),
-                        cv::Point(results[det_idx].wires[seg_idx].right, results[det_idx].wires[seg_idx].bottom),
-                        color, 2);
-            drawMask(draw_img, results[det_idx].wires[seg_idx], color);
-        }
-    }
+    // 不直接渲染模型输出结果，而是渲染后处理结果
+    // for (size_t det_idx = 0; det_idx < results.size(); ++det_idx)
+    // {
+    //     cv::rectangle(draw_img,
+    //                     cv::Point(results[det_idx].solder_info.left, results[det_idx].solder_info.top),
+    //                     cv::Point(results[det_idx].solder_info.right, results[det_idx].solder_info.bottom),
+    //                     cv::Scalar(0, 0, 255), 2);
+    //     for (size_t seg_idx = 0; seg_idx < results[det_idx].wires.size(); ++seg_idx)
+    //     {
+    //         cv::Scalar color = COLORS[results[det_idx].wires[seg_idx].cls % COLORS.size()];
+    //         cv::rectangle(draw_img,
+    //                     cv::Point(results[det_idx].wires[seg_idx].left, results[det_idx].wires[seg_idx].top),
+    //                     cv::Point(results[det_idx].wires[seg_idx].right, results[det_idx].wires[seg_idx].bottom),
+    //                     color, 2);
+    //         drawMask(draw_img, results[det_idx].wires[seg_idx], color);
+    //     }
+    // }
 
     for (size_t det_idx = 0; det_idx < match_results.size(); ++det_idx)
     {
         auto match = match_results[det_idx];
+
+        cv::rectangle(draw_img,
+                cv::Point(results[match.result_idx].solder_info.left, results[match.result_idx].solder_info.top),
+                cv::Point(results[match.result_idx].solder_info.right, results[match.result_idx].solder_info.bottom),
+                cv::Scalar(0, 0, 255), 2);
+        for (size_t seg_idx = 0; seg_idx < results[match.result_idx].wires.size(); ++seg_idx)
+        {
+            cv::Scalar color = COLORS[results[match.result_idx].wires[seg_idx].cls % COLORS.size()];
+            cv::rectangle(draw_img,
+                        cv::Point(results[match.result_idx].wires[seg_idx].left, results[match.result_idx].wires[seg_idx].top),
+                        cv::Point(results[match.result_idx].wires[seg_idx].right, results[match.result_idx].wires[seg_idx].bottom),
+                        color, 2);
+            drawMask(draw_img, results[match.result_idx].wires[seg_idx], color);
+        }
+
         if (match.truth_idx != -1 && match.result_idx == -1)//检测板漏检
         {
             //在图片左上角打印漏掉信息

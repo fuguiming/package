@@ -427,6 +427,22 @@ float compute_mask_iou_strict(const CheckBox& a, const CheckBox& b)
     cv::Rect roi_a(inter.x - a.left, inter.y - a.top, inter.width, inter.height);
     cv::Rect roi_b(inter.x - b.left, inter.y - b.top, inter.width, inter.height);
 
+    // 裁剪到各自mask范围
+    roi_a &= cv::Rect(0, 0, ra.cols, ra.rows);
+    roi_b &= cv::Rect(0, 0, rb.cols, rb.rows);
+
+    // 统一尺寸
+    int w = std::min(roi_a.width, roi_b.width);
+    int h = std::min(roi_a.height, roi_b.height);
+
+    if (w <= 0 || h <= 0) return 0.0f;
+
+    roi_a.width = w;
+    roi_a.height = h;
+
+    roi_b.width = w;
+    roi_b.height = h;
+
     cv::Mat sub_a = ra(roi_a);
     cv::Mat sub_b = rb(roi_b);
 
@@ -905,6 +921,14 @@ bool existColorInCircle(
     return true;
 }
 
+inline float colorDist(const cv::Scalar& a, const cv::Scalar& b)
+{
+    return std::sqrt(
+        (a[0]-b[0])*(a[0]-b[0]) +
+        (a[1]-b[1])*(a[1]-b[1]) +
+        (a[2]-b[2])*(a[2]-b[2]));
+}
+
 void secondCheckBasedTruth(
     const cv::Mat image,
     const SolderWire& truth_info,
@@ -931,8 +955,10 @@ void secondCheckBasedTruth(
         if (color_count2.count(cls))
             count2 = color_count2.at(cls);
 
-        if (count1 == 1 && count2 == 0)
+        // 召回方案一：以下二次召回仅适用检测焊点比模板焊点漏检一根导线情况
+        if ((1 == truth_info.wires.size() - result_info.wires.size()) && count1 == 1 && count2 == 0)
         {
+            std::cout<<"use plan one to find back!"<<std::endl;
             cv::Scalar color;
             for (const auto& wire : truth_info.wires) {
                 if (wire.cls == cls)
@@ -966,6 +992,49 @@ void secondCheckBasedTruth(
             {
                 result_info.wires.push_back(temp);
             }
+        }
+        // 召回方案二：以下二次找回仅适用于检测焊点比模板焊点导线数量一致，但颜色不一致，通过颜色比对找回
+        else if ((truth_info.wires.size() == result_info.wires.size()) && count1 != count2)
+        {
+            std::cout<<"use plan two to find back!"<<std::endl;
+            // 每一个模板焊点导线颜色color都和检测焊点的导线color遍历比较，如果全部通道都满足阈值要求则匹配成功
+            int N = truth_info.wires.size();
+            std::vector<int> used(N, 0); // 标记result是否已匹配
+            std::vector<CheckBox> new_wires = result_info.wires; // 可修改副本
+
+            for (int i = 0; i < N; ++i)
+            {
+                const auto& t_wire = truth_info.wires[i];
+                float best_score = 1e9;
+                int best_j = -1;
+
+                for (int j = 0; j < N; ++j)
+                {
+                    if (used[j]) continue;
+
+                    const auto& r_wire = result_info.wires[j];
+                    // 颜色差 =====
+                    float c_dist = colorDist(t_wire.color, r_wire.color);
+                    // 阈值过滤（可调）
+                    if (c_dist > 30) continue;
+                    float score = c_dist;
+                    if (score < best_score)
+                    {
+                        best_score = score;
+                        best_j = j;
+                    }
+                }
+
+                // ===== 找到匹配 =====
+                if (best_j != -1)
+                {
+                    used[best_j] = 1;
+                    // 修正类别（关键）
+                    new_wires[best_j].cls = t_wire.cls;
+                }
+            }
+
+            result_info.wires = new_wires;
         }
     }
 }
@@ -1066,6 +1135,7 @@ std::vector<MatchPair> matchSolders(
     for (int j = 0; j < results.size(); ++j)
     {
         if (used[j]) continue;
+        if (0 == results[j].wires.size()) continue;
         matches.push_back({-1, j, false, false});//检测板多检测
     }
 
